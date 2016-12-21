@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modification>
+    <id>Enable Option Display Names</id>
+    <version>0.1</version>
+    <vqmver>2.X</vqmver>
+    <author>Lucas Krupinski - lucasjkr@me.com</author>
+    <comment>This adds a second name field for options in the administrative section called "Display Name". If Display
+        Name is empty, OC will display the option name, but if Display name has an entry it will display that in place
+        of 'name' on the front end. This is useful if there are multiple options that should be presented as being the
+        same option in the front end but need to be treated differently on the backend. For instance, two manufacturers
+        have their own palettes of colors available, you can create two color options called:
+
+        Manufacturer 1 - Color
+        Manufacturer 2 - Color
+
+        Which both display as "Color" to the visitor.
+
+        Makes it easier to enter assign options to products in the backend is all.
+
+        This VQMOD requires you manually add a new column to your option_description table called 'display' as
+        (varchar, 128 characters), because I haven't figured out how to do that at the VQMOD level yet.
+
+    </comment>
+    
+    <file name="admin/model/catalog/option.php">
+        <operation info="">
+            <search position="replace"><![CDATA[
+            $this->db->query("INSERT INTO " . DB_PREFIX . "option_description SET option_id = '" . (int)$option_id . "', language_id = '" . (int)$language_id . "', name = '" . $this->db->escape($value['name']) . "'");
+            ]]></search>
+            <add><![CDATA[
+            $this->db->query("INSERT INTO " . DB_PREFIX . "option_description SET option_id = '" . (int)$option_id . "', language_id = '" . (int)$language_id . "', name = '" . $this->db->escape($value['name']) . "', display = '" . $this->db->escape($value['display']) . "'");
+            ]]></add>
+        </operation>
+
+        <operation info="">
+            <search position="replace"><![CDATA[
+			$option_data[$result['language_id']] = array('name' => $result['name']);
+            ]]></search>
+            <add><![CDATA[
+			$option_data[$result['language_id']] = array('name' => $result['name'], 'display' =>$result['display']);
+            ]]></add>
+        </operation>
+    </file>
+
+
+    <file name="admin/view/template/catalog/option_form.tpl">
+        <operation info="Add display name to option form on admin interface">
+            <search position="before"><![CDATA[
+            <label class="col-sm-2 control-label" for="input-type"><?php echo $entry_type; ?></label>
+            ]]></search>
+            <add><![CDATA[
+            <label class="col-sm-2 control-label">Display Name</label>
+            <div class="col-sm-10">
+              <?php foreach ($languages as $language) { ?>
+              <div class="input-group"><span class="input-group-addon"><img src="language/<?php echo $language['code']; ?>/<?php echo $language['code']; ?>.png" title="<?php echo $language['name']; ?>" /></span>
+                <input type="text"
+                name="option_description[<?php echo $language['language_id']; ?>][display]"
+                value="<?php echo isset($option_description[$language['language_id']]) ? $option_description[$language['language_id']]['display'] : ''; ?>" placeholder="Display name (optional)" class="form-control" />
+              </div>
+              <?php if (isset($error_name[$language['language_id']])) { ?>
+              <div class="text-danger"><?php echo $error_name[$language['language_id']]; ?></div>
+              <?php } ?>
+              <?php } ?>
+            </div>
+          </div>
+
+          <div class="form-group">
+            ]]></add>
+        </operation>
+    </file>
+
+
+    <file name="catalog/model/catalog/product.php">
+        <operation info="Use display name (if available) on output page, otherwise use option name">
+            <search position="after"><![CDATA[
+            foreach ($product_option_query->rows as $product_option) {
+            ]]></search>
+            <add><![CDATA[
+            if($product_option['display'] != "") {
+                $product_option['name'] = $product_option['display'];
+            }
+            ]]></add>
+        </operation>
+    </file>
+
+</modification>
