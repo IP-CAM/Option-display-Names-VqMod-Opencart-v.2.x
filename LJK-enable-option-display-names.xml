@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <modification>
     <id>Enable Option Display Names</id>
-    <version>0.1</version>
+    <version>1.0</version>
     <vqmver>2.X</vqmver>
     <author>Lucas Krupinski - lucasjkr@me.com</author>
     <comment>This adds a second name field for options in the administrative section called "Display Name". If Display
@@ -17,12 +17,23 @@
 
         Makes it easier to enter assign options to products in the backend is all.
 
-        This VQMOD requires you manually add a new column to your option_description table called 'display' as
-        (varchar, 128 characters), because I haven't figured out how to do that at the VQMOD level yet.
-
     </comment>
     
     <file name="admin/model/catalog/option.php">
+        <operation info="Create new display column in the option description table">
+            <search position="after"><![CDATA[class ModelCatalogOption extends Model {
+            ]]></search>
+            <add><![CDATA[
+    public function __construct($registry) {
+        parent::__construct($registry);
+
+        if($this->db->query("SHOW COLUMNS FROM `". DB_PREFIX . "option_description` LIKE 'display'")->num_rows ==0) {
+            $this->db->query("ALTER TABLE `" . DB_PREFIX . "option_description` ADD `display` varchar(255) NOT NULL DEFAULT '' COMMENT 'added by LJK-option-display-names.xml vqmod' AFTER `name` ");
+        }
+    }
+            ]]></add>
+        </operation>
+
         <operation info="">
             <search position="replace"><![CDATA[
             $this->db->query("INSERT INTO " . DB_PREFIX . "option_description SET option_id = '" . (int)$option_id . "', language_id = '" . (int)$language_id . "', name = '" . $this->db->escape($value['name']) . "'");
@@ -71,6 +82,19 @@
 
 
     <file name="catalog/model/catalog/product.php">
+        <operation info="Create new display column in the option description table - we do this here too, to make sure a customer doesn't receive an error that the column hasn't been created yet">
+            <search position="after"><![CDATA[class ModelCatalogProduct extends Model {
+                ]]></search>
+            <add><![CDATA[
+        public function __construct($registry) {
+            parent::__construct($registry);
+
+            if($this->db->query("SHOW COLUMNS FROM `". DB_PREFIX . "option_description` LIKE 'display'")->num_rows ==0) {
+                $this->db->query("ALTER TABLE `" . DB_PREFIX . "option_description` ADD `display` varchar(255) NOT NULL DEFAULT '' COMMENT 'added by LJK-option-display-names.xml vqmod' AFTER `name` ");
+            }
+        }
+                ]]></add>
+        </operation>
         <operation info="Use display name (if available) on output page, otherwise use option name">
             <search position="after"><![CDATA[
             foreach ($product_option_query->rows as $product_option) {
